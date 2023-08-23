@@ -1,0 +1,20 @@
+[package]
+name = "slack-github-issue-summarizer"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+github-flows = "0.5.2"
+slack-flows = "0.3.4"
+tokio_wasi = { version = "1.25.0", features = ["macros", "rt"] }
+dotenv = "0.15.0"
+openai-flows = "0.8.5"
+tiktoken-rs = "0.2.2"
+chrono = "0.4.24"
+regex = "1.8.3"
+flowsnet-platform-sdk = "0.1.5"
+log = "0.4"
