@@ -1,5 +1,5 @@
-use flowsnet_platform_sdk::logger;
 use dotenv::dotenv;
+use flowsnet_platform_sdk::logger;
 use github_flows::{get_octo, octocrab::models::issues::Issue, GithubLogin};
 use openai_flows::{
     chat::{ChatModel, ChatOptions},
@@ -80,11 +80,10 @@ async fn handler(worksapce: &str, channel: &str, sm: SlackMessage) {
                 for issue in issues_on_target.items {
                     count -= 1;
 
-                    let summary =
-                        match analyze_issue(&owner, &repo, issue.clone()).await {
-                            Some(s) => s,
-                            None => "No summary generated".to_string(),
-                        };
+                    let summary = match analyze_issue(&owner, &repo, issue.clone()).await {
+                        Some(s) => s,
+                        None => "No summary generated".to_string(),
+                    };
 
                     send_message_to_channel(&worksapce, &channel, summary.to_string()).await;
                     if count <= 0 {
@@ -118,22 +117,6 @@ if yes, please correct the spelling and resend your instruction."#
     }
 }
 
-/*
-
-   let chat_id = format!("Issue#{issue_number}");
-   let system = &format!("As an AI co-owner of a GitHub repository, you are responsible for conducting a comprehensive analysis of GitHub issues. Your analytic focus encompasses distinct elements, including the issue's title, associated labels, body text, the identity of the issue's creator, their role, and the nature of the comments on the issue. Utilizing these data points, your task is to generate a succinct, context-aware summary of the issue.");
-    let map_question = format!("Given the issue titled '{issue_title}' and a particular segment of body or comment text '{text_chunk}', focus on extracting the central arguments, proposed solutions, and instances of agreement or conflict among the participants. Generate an interim summary capturing the essential information in this section. This will be used later to form a comprehensive summary of the entire discussion.");
-
-
-
-   let reduce_question = format!("User '{issue_creator_name}', in the role of '{issue_creator_role}', has filed an issue titled '{issue_title}', labeled as '{labels}'. The key information you've extracted from the issue's body text and comments in segmented form are: {map_out}. Concentrate on the principal arguments, suggested solutions, and areas of consensus or disagreement among the participants. From these elements, generate a concise summary of the entire issue to inform the next course of action.");
-
-
-
-   let question = format!("{issue_body}, concentrate on the principal arguments, suggested solutions, and areas of consensus or disagreement among the participants. From these elements, generate a concise summary of the entire issue to inform the next course of action.");
-
-
-*/
 pub fn squeeze_fit_remove_quoted(
     inp_str: &str,
     quote_mark: &str,
@@ -249,8 +232,11 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
 
     let all_text_from_issue = squeeze_fit_post_texts(&all_text_from_issue, 12_000, 0.4);
 
+    // let sys_prompt_1 = &format!(
+    //     "Given the information that user '{issue_creator_name}' opened an issue titled '{issue_title}', your task is to deeply analyze the content of the issue posts. Distill the crux of the issue, the potential solutions suggested.Concentrate on the principal arguments, suggested solutions, and areas of consensus or disagreement among the participants. From these elements, generate a concise summary of the entire issue to inform the next course of action."
+    // );
     let sys_prompt_1 = &format!(
-        "Given the information that user '{issue_creator_name}' opened an issue titled '{issue_title}', your task is to deeply analyze the content of the issue posts. Distill the crux of the issue, the potential solutions suggested."
+        "Given the information that user '{issue_creator_name}' opened an issue titled '{issue_title}', your task is to deeply analyze the content of the issue posts. Concentrate on the principal arguments, suggested solutions, and areas of consensus or disagreement among the participants, then generate a succinct, context-aware summary of the issue."
     );
 
     let co = match all_text_from_issue.len() > 12000 {
@@ -271,8 +257,11 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
             ..Default::default()
         },
     };
+    // let usr_prompt_1 = &format!(
+    //     "Analyze the GitHub issue content: {all_text_from_issue}. Provide a concise analysis touching upon: The central problem discussed in the issue. The main solutions proposed or agreed upon. Aim for a succinct, analytical summary that stays under 128 tokens."
+    // );
     let usr_prompt_1 = &format!(
-        "Analyze the GitHub issue content: {all_text_from_issue}. Provide a concise analysis touching upon: The central problem discussed in the issue. The main solutions proposed or agreed upon. Aim for a succinct, analytical summary that stays under 128 tokens."
+        "Analyze the GitHub issue content: {all_text_from_issue}. concentrate on the principal arguments, suggested solutions, and areas of consensus or disagreement among the participants. From these elements, generate a concise summary of the entire issue to inform the next course of action. Aim for a succinct, analytical summary that stays under 128 tokens."
     );
 
     match openai
