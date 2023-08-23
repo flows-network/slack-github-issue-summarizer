@@ -81,7 +81,7 @@ async fn handler(worksapce: &str, channel: &str, sm: SlackMessage) {
                     count -= 1;
 
                     let summary = match analyze_issue(&owner, &repo, issue.clone()).await {
-                        Some(s) => s,
+                        Some(s) => format!("{}\n{}", s, issue.html_url),
                         None => "No summary generated".to_string(),
                     };
 
@@ -253,7 +253,7 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
             system_prompt: Some(sys_prompt_1),
             restart: true,
             temperature: Some(0.7),
-            max_tokens: Some(128),
+            max_tokens: Some(100),
             ..Default::default()
         },
     };
