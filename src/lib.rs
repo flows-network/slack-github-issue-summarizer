@@ -82,7 +82,10 @@ async fn handler(worksapce: &str, channel: &str, sm: SlackMessage) {
 
                     let summary = match analyze_issue(&owner, &repo, issue.clone()).await {
                         Some(s) => format!("{}\n{}", s, issue.html_url),
-                        None => format!("Summarization failed, no summary generated for issue: {}", issue.html_url),
+                        None => format!(
+                            "Summarization failed, no summary generated for issue: {}",
+                            issue.html_url
+                        ),
                     };
 
                     send_message_to_channel(&worksapce, &channel, summary.to_string()).await;
@@ -182,7 +185,8 @@ pub fn squeeze_fit_post_texts(inp_str: &str, max_len: u16, split: f32) -> String
 }
 
 pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<String> {
-    let openai = OpenAIFlows::new();
+    let mut openai = OpenAIFlows::new();
+    openai.set_retry_times(2);
     let octocrab = get_octo(&GithubLogin::Default);
 
     let issue_creator_name = &issue.user.login;
