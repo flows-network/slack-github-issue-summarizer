@@ -82,7 +82,7 @@ async fn handler(worksapce: &str, channel: &str, sm: SlackMessage) {
 
                     let summary = match analyze_issue(&owner, &repo, issue.clone()).await {
                         Some(s) => format!("{}\n{}", s, issue.html_url),
-                        None => "No summary generated".to_string(),
+                        None => format!("Summarization failed, no summary generated for issue: {}", issue.html_url),
                     };
 
                     send_message_to_channel(&worksapce, &channel, summary.to_string()).await;
