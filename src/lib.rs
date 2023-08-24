@@ -265,7 +265,7 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
     //     "Analyze the GitHub issue content: {all_text_from_issue}. Provide a concise analysis touching upon: The central problem discussed in the issue. The main solutions proposed or agreed upon. Aim for a succinct, analytical summary that stays under 128 tokens."
     // );
     let usr_prompt_1 = &format!(
-        "Analyze the GitHub issue content: {all_text_from_issue}. concentrate on the principal arguments, suggested solutions, and areas of consensus or disagreement among the participants. From these elements, generate a concise summary of the entire issue to inform the next course of action. Aim for a succinct, analytical summary that stays under 128 tokens."
+        "Analyze the GitHub issue content: {all_text_from_issue}. concentrate on the principal arguments, suggested solutions, and areas of consensus or disagreement among the participants. From these elements, generate a concise summary of the entire issue to inform the next course of action. Aim for a succinct, analytical summary in bullet points that stays under 128 tokens."
     );
 
     match openai
