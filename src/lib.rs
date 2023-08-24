@@ -15,7 +15,7 @@ pub async fn run() {
     dotenv().ok();
     logger::init();
     let slack_workspace = env::var("slack_workspace").unwrap_or("secondstate".to_string());
-    let slack_channel = env::var("slack_channel").unwrap_or("github-status".to_string());
+    let slack_channel = env::var("slack_channel").unwrap_or("test-flow".to_string());
 
     listen_to_channel(&slack_workspace, &slack_channel, |sm| {
         handler(&slack_workspace, &slack_channel, sm)
