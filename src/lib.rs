@@ -295,40 +295,43 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
         .chat_completion(&format!("issue_{issue_number}"), usr_prompt_1, &co)
         .await
     {
-        Ok(r) => match custom_json_parser(&r.choice) {
-            Some(parsed_summary) => {
-                let arguments = match parsed_summary.PrincipalArguments {
-                    Some(v) => format!("Key arguments: {:?}\n", v.join(" ")),
-                    None => String::new(),
-                };
-                let solutions = match parsed_summary.SuggestedSolutions {
-                    Some(v) => format!("Solutions: {:?}\n", v.join(" ")),
-                    None => String::new(),
-                };
-                let consensus = match parsed_summary.AreasOfConsensus {
-                    Some(v) => format!("Consensus: {:?}\n", v.join(" ")),
-                    None => String::new(),
-                };
-                let disagreement = match parsed_summary.AreasOfDisagreement {
-                    Some(v) => format!("Disagreement: {:?}\n", v.join(" ")),
-                    None => String::new(),
-                };
-                let summary = match parsed_summary.ConciseSummary {
-                    Some(s) => format!("Summary: {}", s),
-                    None => String::new(),
-                };
-                let out = format!(
-                    "{} {} {} {} {}",
-                    arguments, solutions, consensus, disagreement, summary
-                );
+        Ok(r) => {
+            slack_flows::send_message_to_channel("ik8", "ch_iss", r.choice.clone()).await;
+            match custom_json_parser(&r.choice) {
+                Some(parsed_summary) => {
+                    let arguments = match parsed_summary.PrincipalArguments {
+                        Some(v) => format!("Key arguments: {:?}\n", v.join(" ")),
+                        None => String::new(),
+                    };
+                    let solutions = match parsed_summary.SuggestedSolutions {
+                        Some(v) => format!("Solutions: {:?}\n", v.join(" ")),
+                        None => String::new(),
+                    };
+                    let consensus = match parsed_summary.AreasOfConsensus {
+                        Some(v) => format!("Consensus: {:?}\n", v.join(" ")),
+                        None => String::new(),
+                    };
+                    let disagreement = match parsed_summary.AreasOfDisagreement {
+                        Some(v) => format!("Disagreement: {:?}\n", v.join(" ")),
+                        None => String::new(),
+                    };
+                    let summary = match parsed_summary.ConciseSummary {
+                        Some(s) => format!("Summary: {}", s),
+                        None => String::new(),
+                    };
+                    let out = format!(
+                        "{} {} {} {} {}",
+                        arguments, solutions, consensus, disagreement, summary
+                    );
 
-                Some(out)
+                    Some(out)
+                }
+                None => {
+                    log::error!("Error generating issue summary #{}", issue_number);
+                    None
+                }
             }
-            None => {
-                log::error!("Error generating issue summary #{}", issue_number);
-                None
-            }
-        },
+        }
 
         Err(_e) => {
             log::error!("Error generating issue summary #{}: {}", issue_number, _e);
@@ -336,7 +339,6 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
         }
     }
 }
-
 
 #[derive(Debug, Deserialize)]
 struct GitHubIssueSummary {
@@ -348,8 +350,9 @@ struct GitHubIssueSummary {
 }
 
 fn custom_json_parser(input: &str) -> Option<GitHubIssueSummary> {
-    let mut parsed_data: std::collections::HashMap<String, serde_json::Value> = std::collections::HashMap::new();
-    
+    let mut parsed_data: std::collections::HashMap<String, serde_json::Value> =
+        std::collections::HashMap::new();
+
     let lines: Vec<&str> = input.lines().collect();
     for line in lines {
         if line.trim().starts_with("\"") {
@@ -357,8 +360,9 @@ fn custom_json_parser(input: &str) -> Option<GitHubIssueSummary> {
             if parts.len() >= 2 {
                 let key = parts[0].trim_matches(|c| c == '"' || c == ' ');
                 let value: String = parts[1..].join(":");
-                
-                if value.len() >= 15 { // Ignore if data is less than 15 characters
+
+                if value.len() >= 15 {
+                    // Ignore if data is less than 15 characters
                     if let Ok(json_value) = serde_json::from_str(&value) {
                         parsed_data.insert(key.to_string(), json_value);
                     }
@@ -366,7 +370,7 @@ fn custom_json_parser(input: &str) -> Option<GitHubIssueSummary> {
             }
         }
     }
-    
+
     let mut summary = GitHubIssueSummary {
         PrincipalArguments: None,
         SuggestedSolutions: None,
@@ -374,31 +378,31 @@ fn custom_json_parser(input: &str) -> Option<GitHubIssueSummary> {
         AreasOfDisagreement: None,
         ConciseSummary: None,
     };
-    
+
     if let Some(val) = parsed_data.get("PrincipalArguments") {
         if let Ok(converted) = serde_json::from_value(val.clone()) {
             summary.PrincipalArguments = Some(converted);
         }
     }
-    
+
     if let Some(val) = parsed_data.get("SuggestedSolutions") {
         if let Ok(converted) = serde_json::from_value(val.clone()) {
             summary.SuggestedSolutions = Some(converted);
         }
     }
-    
+
     if let Some(val) = parsed_data.get("AreasOfConsensus") {
         if let Ok(converted) = serde_json::from_value(val.clone()) {
             summary.AreasOfConsensus = Some(converted);
         }
     }
-    
+
     if let Some(val) = parsed_data.get("AreasOfDisagreement") {
         if let Ok(converted) = serde_json::from_value(val.clone()) {
             summary.AreasOfDisagreement = Some(converted);
         }
     }
-    
+
     if let Some(val) = parsed_data.get("ConciseSummary") {
         if let Ok(converted) = serde_json::from_value(val.clone()) {
             summary.ConciseSummary = Some(converted);
@@ -407,4 +411,3 @@ fn custom_json_parser(input: &str) -> Option<GitHubIssueSummary> {
 
     Some(summary)
 }
-
