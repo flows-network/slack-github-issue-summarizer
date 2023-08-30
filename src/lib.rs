@@ -122,17 +122,12 @@ if yes, please correct the spelling and resend your instruction."#
     }
 }
 
-pub fn squeeze_fit_remove_quoted(
-    inp_str: &str,
-    quote_mark: &str,
-    max_len: u16,
-    split: f32,
-) -> String {
+pub fn squeeze_fit_remove_quoted(inp_str: &str, max_len: u16, split: f32) -> String {
     let mut body = String::new();
     let mut inside_quote = false;
 
     for line in inp_str.lines() {
-        if line.contains(quote_mark) {
+        if line.contains("```") || line.contains("\"\"\"") {
             inside_quote = !inside_quote;
             continue;
         }
@@ -153,10 +148,21 @@ pub fn squeeze_fit_remove_quoted(
     let n_take_from_beginning = (body_len as f32 * split) as usize;
     let n_keep_till_end = body_len - n_take_from_beginning;
 
+    // Range check for drain operation
+    let drain_start = if n_take_from_beginning < body_len {
+        n_take_from_beginning
+    } else {
+        body_len
+    };
+
+    let drain_end = if n_keep_till_end <= body_len {
+        body_len - n_keep_till_end
+    } else {
+        0
+    };
+
     let final_text = if body_len > max_len as usize {
         let mut body_text_vec = body_words.to_vec();
-        let drain_start = n_take_from_beginning;
-        let drain_end = body_len - n_keep_till_end;
         body_text_vec.drain(drain_start..drain_end);
         body_text_vec.join(" ")
     } else {
@@ -196,7 +202,7 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
     let issue_number = issue.number;
 
     let issue_body = match &issue.body {
-        Some(body) => squeeze_fit_remove_quoted(body, "```", 500, 0.6),
+        Some(body) => squeeze_fit_remove_quoted(body, 500, 0.6),
         None => "".to_string(),
     };
 
@@ -223,7 +229,7 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
         Ok(comments_page) => {
             for comment in comments_page.items {
                 let comment_body = match &comment.body {
-                    Some(body) => squeeze_fit_remove_quoted(body, "```", 300, 0.6),
+                    Some(body) => squeeze_fit_remove_quoted(body, 300, 0.6),
                     None => "".to_string(),
                 };
                 let commenter = &comment.user.login;
@@ -268,7 +274,13 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
     // );
 
     let usr_prompt_1 = &format!(
-        "Analyze the GitHub issue content: {all_text_from_issue}. Please reply in JSON format with the following fields: 'PrincipalArguments', 'SuggestedSolutions', 'AreasOfConsensus', 'AreasOfDisagreement', and 'ConciseSummary'. Concentrate on the principal arguments, suggested solutions, and areas of consensus or disagreement among the participants. Generate a concise summary of the entire issue to inform the next course of action. Aim for each field to stay under 128 tokens."
+        "Analyze the GitHub issue content: {all_text_from_issue}. Please focus on the following key elements and generate a JSON-formatted summary with complete sentences for each field:\n\
+        - 'PrincipalArguments': Summarize the main points raised in the issue in complete sentences. If none are found, leave this field empty.\n\
+        - 'SuggestedSolutions': List any proposed solutions in complete sentences. If none are found, leave this field empty.\n\
+        - 'AreasOfConsensus': Identify points where participants seem to agree, and express this in complete sentences. If none are found, leave this field empty.\n\
+        - 'AreasOfDisagreement': Identify points of contention among the participants in complete sentences. If none are found, leave this field empty.\n\
+        - 'ConciseSummary': Provide an overall summary of the issue in a single sentence or two.\n\
+        Aim to generate a JSON object adhering to this structure, and keep the overall response under 128 tokens."
     );
 
     match openai
@@ -279,24 +291,24 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
             slack_flows::send_message_to_channel("ik8", "general", r.choice.clone()).await;
 
             match extract_and_parse_summary(&r.choice) {
-
-            Some(parsed_summary) => {
-                let out = format!(
+                Some(parsed_summary) => {
+                    let out = format!(
                     "PrincipalArguments: {:?}\nSuggestedSolutions: {:?}\nAreasOfConsensus: {:?}\nAreasOfDisagreement: {:?}\nConciseSummary: {}",
-                    parsed_summary.PrincipalArguments.unwrap_or(vec!["None".to_string()]),
-                    parsed_summary.SuggestedSolutions.unwrap_or(vec!["None".to_string()]),
-                    parsed_summary.AreasOfConsensus.unwrap_or(vec!["None".to_string()]),
-                    parsed_summary.AreasOfDisagreement.unwrap_or(vec!["None".to_string()]),
-                    parsed_summary.ConciseSummary.unwrap_or("None".to_string())
+                    parsed_summary.PrincipalArguments.unwrap_or(vec!["".to_string()]),
+                    parsed_summary.SuggestedSolutions.unwrap_or(vec!["".to_string()]),
+                    parsed_summary.AreasOfConsensus.unwrap_or(vec!["".to_string()]),
+                    parsed_summary.AreasOfDisagreement.unwrap_or(vec!["".to_string()]),
+                    parsed_summary.ConciseSummary.unwrap_or("".to_string())
                 );
 
-                Some(out)
+                    Some(out)
+                }
+                None => {
+                    log::error!("Error generating issue summary #{}", issue_number);
+                    None
+                }
             }
-            None => {
-                log::error!("Error generating issue summary #{}", issue_number);
-                None
-            }
-        }},
+        }
 
         Err(_e) => {
             log::error!("Error generating issue summary #{}: {}", issue_number, _e);
