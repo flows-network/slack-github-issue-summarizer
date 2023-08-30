@@ -274,41 +274,61 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
     // );
 
     let usr_prompt_1 = &format!(
-        "Analyze the GitHub issue content: {all_text_from_issue}. Please focus on the following key elements and generate a JSON-formatted summary with complete sentences for each field:\n\
-        - 'PrincipalArguments': Summarize the main points raised in the issue in complete sentences. If none are found, leave this field empty.\n\
-        - 'SuggestedSolutions': List any proposed solutions in complete sentences. If none are found, leave this field empty.\n\
-        - 'AreasOfConsensus': Identify points where participants seem to agree, and express this in complete sentences. If none are found, leave this field empty.\n\
-        - 'AreasOfDisagreement': Identify points of contention among the participants in complete sentences. If none are found, leave this field empty.\n\
-        - 'ConciseSummary': Provide an overall summary of the issue in a single sentence or two.\n\
-        Aim to generate a JSON object adhering to this structure, and keep the overall response under 128 tokens."
+        "Analyze the GitHub issue content: {}. \
+        Concentrate on the principal arguments, suggested solutions, and areas of consensus or \
+        disagreement among the participants. \
+        From these elements, generate a concise summary of the entire issue to inform the next course of action. \
+        Please reply in the following JSON format, leaving fields empty if no relevant information is generated: \n\n\
+        ```\n\
+        {{\n\
+          \"PrincipalArguments\": \"List principal arguments here as complete sentences.\",\n\
+          \"SuggestedSolutions\": \"List any suggested solutions here as complete sentences.\",\n\
+          \"AreasOfConsensus\": \"Highlight areas where there's general agreement among the participants as complete sentences.\",\n\
+          \"AreasOfDisagreement\": \"Highlight areas where there's general disagreement among the participants as complete sentences.\",\n\
+          \"ConciseSummary\": \"Provide a concise, analytical summary of the issue as a complete sentence.\"\n\
+        }}\n\
+        ```",
+        all_text_from_issue
     );
 
     match openai
         .chat_completion(&format!("issue_{issue_number}"), usr_prompt_1, &co)
         .await
     {
-        Ok(r) => {
-            slack_flows::send_message_to_channel("ik8", "general", r.choice.clone()).await;
-
-            match extract_and_parse_summary(&r.choice) {
-                Some(parsed_summary) => {
-                    let out = format!(
-                    "PrincipalArguments: {:?}\nSuggestedSolutions: {:?}\nAreasOfConsensus: {:?}\nAreasOfDisagreement: {:?}\nConciseSummary: {}",
-                    parsed_summary.PrincipalArguments.unwrap_or(vec!["".to_string()]),
-                    parsed_summary.SuggestedSolutions.unwrap_or(vec!["".to_string()]),
-                    parsed_summary.AreasOfConsensus.unwrap_or(vec!["".to_string()]),
-                    parsed_summary.AreasOfDisagreement.unwrap_or(vec!["".to_string()]),
-                    parsed_summary.ConciseSummary.unwrap_or("".to_string())
+        Ok(r) => match extract_and_parse_summary(&r.choice) {
+            Some(parsed_summary) => {
+                let arguments = match parsed_summary.PrincipalArguments {
+                    Some(v) => format!("Key arguments: {:?}\n", v.join(" ")),
+                    None => String::new(),
+                };
+                let solutions = match parsed_summary.SuggestedSolutions {
+                    Some(v) => format!("Solutions: {:?}\n", v.join(" ")),
+                    None => String::new(),
+                };
+                let consensus = match parsed_summary.AreasOfConsensus {
+                    Some(v) => format!("Consensus: {:?}\n", v.join(" ")),
+                    None => String::new(),
+                };
+                let disagreement = match parsed_summary.AreasOfDisagreement {
+                    Some(v) => format!("Disagreement: {:?}\n", v.join(" ")),
+                    None => String::new(),
+                };
+                let summary = match parsed_summary.ConciseSummary {
+                    Some(s) => format!("Summary: {}", s),
+                    None => String::new(),
+                };
+                let out = format!(
+                    "{} {} {} {} {}",
+                    arguments, solutions, consensus, disagreement, summary
                 );
 
-                    Some(out)
-                }
-                None => {
-                    log::error!("Error generating issue summary #{}", issue_number);
-                    None
-                }
+                Some(out)
             }
-        }
+            None => {
+                log::error!("Error generating issue summary #{}", issue_number);
+                None
+            }
+        },
 
         Err(_e) => {
             log::error!("Error generating issue summary #{}: {}", issue_number, _e);
@@ -329,10 +349,25 @@ struct GitHubIssueSummary {
 }
 
 fn find_json_range(text: &str) -> Option<Range<usize>> {
-    let start = text.find('{')?;
-    let end = text.rfind('}')?;
-    if start < end {
-        Some(start..end + 1)
+    let mut depth = 0;
+    let mut start = None;
+    let mut end = None;
+    for (i, c) in text.chars().enumerate() {
+        if c == '{' {
+            if depth == 0 {
+                start = Some(i);
+            }
+            depth += 1;
+        } else if c == '}' {
+            depth -= 1;
+            if depth == 0 {
+                end = Some(i + 1);
+                break;
+            }
+        }
+    }
+    if let (Some(start), Some(end)) = (start, end) {
+        Some(start..end)
     } else {
         None
     }
@@ -340,11 +375,9 @@ fn find_json_range(text: &str) -> Option<Range<usize>> {
 
 fn extract_and_parse_summary(input: &str) -> Option<GitHubIssueSummary> {
     let json_range = find_json_range(input)?;
-
     let json_str = &input[json_range];
-    let parsed_summary = serde_json::from_str::<GitHubIssueSummary>(json_str);
-
-    match parsed_summary {
+    
+    match serde_json::from_str::<GitHubIssueSummary>(json_str) {
         Ok(s) => Some(s),
         Err(err) => {
             log::error!("Error parsing issue summary: {}", err);
