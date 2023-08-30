@@ -282,12 +282,12 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
 
             Some(parsed_summary) => {
                 let out = format!(
-                    "{} {} {} {} {}",
-                    parsed_summary.PrincipalArguments,
-                    parsed_summary.SuggestedSolutions,
-                    parsed_summary.AreasOfConsensus,
-                    parsed_summary.AreasOfDisagreement,
-                    parsed_summary.ConciseSummary
+                    "PrincipalArguments: {:?}\nSuggestedSolutions: {:?}\nAreasOfConsensus: {:?}\nAreasOfDisagreement: {:?}\nConciseSummary: {}",
+                    parsed_summary.PrincipalArguments.unwrap_or(vec!["None".to_string()]),
+                    parsed_summary.SuggestedSolutions.unwrap_or(vec!["None".to_string()]),
+                    parsed_summary.AreasOfConsensus.unwrap_or(vec!["None".to_string()]),
+                    parsed_summary.AreasOfDisagreement.unwrap_or(vec!["None".to_string()]),
+                    parsed_summary.ConciseSummary.unwrap_or("None".to_string())
                 );
 
                 Some(out)
@@ -309,12 +309,13 @@ use std::ops::Range;
 
 #[derive(Debug, Deserialize)]
 struct GitHubIssueSummary {
-    PrincipalArguments: String,
-    SuggestedSolutions: String,
-    AreasOfConsensus: String,
-    AreasOfDisagreement: String,
-    ConciseSummary: String,
+    PrincipalArguments: Option<Vec<String>>,
+    SuggestedSolutions: Option<Vec<String>>,
+    AreasOfConsensus: Option<Vec<String>>,
+    AreasOfDisagreement: Option<Vec<String>>,
+    ConciseSummary: Option<String>,
 }
+
 fn find_json_range(text: &str) -> Option<Range<usize>> {
     let start = text.find('{')?;
     let end = text.rfind('}')?;
