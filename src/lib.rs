@@ -276,7 +276,7 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
         .await
     {
         Ok(r) => {
-            slack_flows::send_message_to_channel("ik8", "ch_err", r.choice.clone()).await;
+            slack_flows::send_message_to_channel("ik8", "general", r.choice.clone()).await;
 
             match extract_and_parse_summary(&r.choice) {
 
