@@ -269,28 +269,24 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
             ..Default::default()
         },
     };
-    // let usr_prompt_1 = &format!(
-    //     "Analyze the GitHub issue content: {all_text_from_issue}. Provide a concise analysis touching upon: The central problem discussed in the issue. The main solutions proposed or agreed upon. Aim for a succinct, analytical summary that stays under 128 tokens."
-    // );
-
     let usr_prompt_1 = &format!(
         "Analyze the GitHub issue content: {}. \
         Concentrate on the principal arguments, suggested solutions, and areas of consensus or \
         disagreement among the participants. \
         From these elements, generate a concise summary of the entire issue to inform the next course of action. \
-        Please reply in the following JSON format, leaving fields empty if no relevant information is generated: \n\n\
+        Please reply in the following JSON format. If no information is available for a field, leave that field empty. \
+        If information is available, summarize it as a single, complete sentence covering one or multiple facts: \n\n\
         ```\n\
         {{\n\
-          \"PrincipalArguments\": \"List principal arguments here as complete sentences.\",\n\
-          \"SuggestedSolutions\": \"List any suggested solutions here as complete sentences.\",\n\
-          \"AreasOfConsensus\": \"Highlight areas where there's general agreement among the participants as complete sentences.\",\n\
-          \"AreasOfDisagreement\": \"Highlight areas where there's general disagreement among the participants as complete sentences.\",\n\
-          \"ConciseSummary\": \"Provide a concise, analytical summary of the issue as a complete sentence.\"\n\
+          \"PrincipalArguments\": \"\",\n\
+          \"SuggestedSolutions\": \"\",\n\
+          \"AreasOfConsensus\": \"\",\n\
+          \"AreasOfDisagreement\": \"\",\n\
+          \"ConciseSummary\": \"\"\n\
         }}\n\
         ```",
         all_text_from_issue
     );
-
     match openai
         .chat_completion(&format!("issue_{issue_number}"), usr_prompt_1, &co)
         .await
