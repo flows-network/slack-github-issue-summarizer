@@ -6,6 +6,8 @@ use openai_flows::{
     OpenAIFlows,
 };
 use regex::Regex;
+use serde::Deserialize;
+use serde_json;
 use slack_flows::{listen_to_channel, send_message_to_channel, SlackMessage};
 use std::env;
 
@@ -264,17 +266,75 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
     // let usr_prompt_1 = &format!(
     //     "Analyze the GitHub issue content: {all_text_from_issue}. Provide a concise analysis touching upon: The central problem discussed in the issue. The main solutions proposed or agreed upon. Aim for a succinct, analytical summary that stays under 128 tokens."
     // );
+
     let usr_prompt_1 = &format!(
-        "Analyze the GitHub issue content: {all_text_from_issue}. concentrate on the principal arguments, suggested solutions, and areas of consensus or disagreement among the participants. From these elements, generate a concise summary of the entire issue to inform the next course of action. Aim for a succinct, analytical summary that stays under 128 tokens."
+        "Analyze the GitHub issue content: {all_text_from_issue}. Please reply in JSON format with the following fields: 'PrincipalArguments', 'SuggestedSolutions', 'AreasOfConsensus', 'AreasOfDisagreement', and 'ConciseSummary'. Concentrate on the principal arguments, suggested solutions, and areas of consensus or disagreement among the participants. Generate a concise summary of the entire issue to inform the next course of action. Aim for each field to stay under 128 tokens."
     );
 
     match openai
         .chat_completion(&format!("issue_{issue_number}"), usr_prompt_1, &co)
         .await
     {
-        Ok(r) => Some(r.choice),
+        Ok(r) => {
+            slack_flows::send_message_to_channel("ik8", "ch_err", r.choice.clone()).await;
+
+            match extract_and_parse_summary(&r.choice) {
+
+            Some(parsed_summary) => {
+                let out = format!(
+                    "{} {} {} {} {}",
+                    parsed_summary.PrincipalArguments,
+                    parsed_summary.SuggestedSolutions,
+                    parsed_summary.AreasOfConsensus,
+                    parsed_summary.AreasOfDisagreement,
+                    parsed_summary.ConciseSummary
+                );
+
+                Some(out)
+            }
+            None => {
+                log::error!("Error generating issue summary #{}", issue_number);
+                None
+            }
+        }},
+
         Err(_e) => {
             log::error!("Error generating issue summary #{}: {}", issue_number, _e);
+            None
+        }
+    }
+}
+
+use std::ops::Range;
+
+#[derive(Debug, Deserialize)]
+struct GitHubIssueSummary {
+    PrincipalArguments: String,
+    SuggestedSolutions: String,
+    AreasOfConsensus: String,
+    AreasOfDisagreement: String,
+    ConciseSummary: String,
+}
+fn find_json_range(text: &str) -> Option<Range<usize>> {
+    let start = text.find('{')?;
+    let end = text.rfind('}')?;
+    if start < end {
+        Some(start..end + 1)
+    } else {
+        None
+    }
+}
+
+fn extract_and_parse_summary(input: &str) -> Option<GitHubIssueSummary> {
+    let json_range = find_json_range(input)?;
+
+    let json_str = &input[json_range];
+    let parsed_summary = serde_json::from_str::<GitHubIssueSummary>(json_str);
+
+    match parsed_summary {
+        Ok(s) => Some(s),
+        Err(err) => {
+            log::error!("Error parsing issue summary: {}", err);
             None
         }
     }
