@@ -257,7 +257,7 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
             system_prompt: Some(sys_prompt_1),
             restart: true,
             temperature: Some(0.7),
-            max_tokens: Some(192),
+            max_tokens: Some(256),
             ..Default::default()
         },
         false => ChatOptions {
@@ -265,7 +265,7 @@ pub async fn analyze_issue(owner: &str, repo: &str, issue: Issue) -> Option<Stri
             system_prompt: Some(sys_prompt_1),
             restart: true,
             temperature: Some(0.7),
-            max_tokens: Some(100),
+            max_tokens: Some(256),
             ..Default::default()
         },
     };
