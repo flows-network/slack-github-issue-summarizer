@@ -1,4 +1,4 @@
-# <p align="center">Summarize GitHub issues in the past week</p>
+# <p align="center">Summarize GitHub Issues from the Past 7 Days</p>
 
 <p align="center">
   <a href="https://discord.gg/ccZn9ZMfFf">
@@ -12,20 +12,20 @@
   </a>
 </p>
 
-Do you want to stay up-to-date with the issues your open-source project users are facing? This bot can help by providing a summary of the past week's issues on your GitHub repository and posting each issue as a Slack message. This can save you time and increase productivity.
+Stay informed on the issues your open-source project users encounter. Our bot summarizes issues from your GitHub repository over the past 7 days (or fewer) and shares each issue summary as a separate Slack message, streamlining your review process.
 
 This bot can work with any public GitHub repos.
 
-## Usage:
+## How to Use:
 
-To trigger this bot, send a message to the designated channel with `trigger_word` <github_owner>/<github_repo> [n].
+To trigger this bot, send a message to the designated Slack channel with `trigger_word` <github_owner>/<github_repo> [n].
 - `trigger_word` are the word(s) of your choice. It defaults to "flows summarize" if not specified when you create the flow.
-- github_owner is the GitHub owner of the repository to summarize
+- github_owner is the owner of the GitHub repository
 - github_repo is the GitHub repository to summarize
   - github_owner and github_repo are separated by a '/'
-- `[n]` is the number of days to include in the summary for issues with activities in this period. If you don't write any numbers, the default is 7.
+- `[n]`: Number of days for the summary (default is 7 days if left empty).
 
-Let's take Pytorch as an example. Send `flows summarize pytorch/pytorch` to the designated channel, you will receive the issue summary of each issue raised in the last 7 days.
+Let's take Pytorch as an example. Send `flows summarize pytorch/pytorch` to the designated channel, you will receive summaries of each issue raised in the last 7 days.
 
 ## Deploy on your own repo
 
@@ -46,12 +46,12 @@ You will also need to sign into [flows.network](https://flows.network/) using yo
 
 Review the `trigger_phrase`. 
 
-* `trigger_phrase`is the magic words you type in a Slack message to manually activate the bot. The default is `flows summarize`.
+* Set your `trigger_phrase`. By default, it is `flows summarize`.
 
-Click on the **Create and Build** button.
+Click **Create and Build**.
 
 ### 2 Add your OpenAI API key
-You will now set up OpenAI integration. Click on **Connect**, enter your key, and give it a name.
+You will now set up OpenAI integration. Click **Connect**, enter your key and name it.
 
 [<img width="450" alt="image" src="https://user-images.githubusercontent.com/45785633/222973214-ecd052dc-72c2-4711-90ec-db1ec9d5f24e.png">](https://user-images.githubusercontent.com/45785633/222973214-ecd052dc-72c2-4711-90ec-db1ec9d5f24e.png)
 
@@ -75,20 +75,20 @@ Enter your Slack workspace and channel respectively in the red boxes below.
 
 Click the "Connect/+ Add new authentication" button to authenticate your Slack account. You'll be redirected to a new page where you must grant [flows.network](https://flows.network/) permission to install the `flows-network` bot on your workspace. This workspace is the one you entered into the `slack_workspace` above. The Slack channel must be public.
 
-Once added, close the tab and return to flows.network. Click on **Continue**.
+Once added, close the tab and return to flows.network. Click **Continue**.
 
 ### 3 Authenticate GitHub
 
-Click **Connect** or **+ Add new authentication** button to grant [flows.network](https://flows.network/) access to the GitHub repo to deploy the 🤖. You can connect any repo here.
+Click **Connect** or **+ Add new authentication** to grant [flows.network](https://flows.network/) your GitHub access. The bot can connect any public GitHub repo.
 
 [<img width="450" alt="image" src="https://github.com/flows-network/github-pr-summary/assets/45785633/6cefff19-9eeb-4533-a20b-03c6a9c89473">](https://github.com/flows-network/github-pr-summary/assets/45785633/6cefff19-9eeb-4533-a20b-03c6a9c89473)
 
-Once done, close the popup window and return to the flow.network page. Click on **Deploy**.
+Once done, close the popup window and return to the flow.network page. Click **Deploy**.
 
 ### Wait for the magic!
 
-This is it! You are now on the flow details page waiting for the flow function to build. As soon as the flow's status becomes `running`, the bot is ready to summarize issues! It will be summoned by commenting trigger phrase and the GitHub repo you want to grasp on the designated channel.
+This is it! You are now on the flow details page waiting for the flow function to build. As soon as the flow's status becomes `running`, the bot is ready to summarize issues! Comment the trigger phrase in Slack to trigger it.
 
-## Some notes
-- The generation process may take several minutes or longer if there are numerous issues with active discussions or oversized comments in the specified time frame.
-- Each request will summarize a maximum of 10 issues.
+## Note
+- Summarization might take longer for repositories with extensive discussions or large comments.
+- Each request will provide individual summaries for a maximum of 10 issues.
