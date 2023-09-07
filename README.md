@@ -16,6 +16,8 @@ Stay informed on the issues your open-source project users encounter. Our bot su
 
 This bot can work with any public GitHub repos.
 
+![](slack-github-issue.gif)
+
 ## How to Use:
 
 To trigger this bot, send a message to the designated Slack channel with `trigger_word` <github_owner>/<github_repo> [n].
